@@ -1,6 +1,8 @@
 package utils
 
 import (
+	"errors"
+
 	"gorm.io/gorm"
 )
 
@@ -18,4 +20,24 @@ func HandleDBError(db *gorm.DB) *DBError {
 	}
 
 	return nil
+}
+
+type retryFn func() (tryAgain bool)
+
+func Retry(fn retryFn, maxRetries int) error {
+
+	var tryAgain bool
+	tries := 1
+
+	for {
+		tryAgain = fn()
+		if !tryAgain {
+			return nil
+		}
+
+		tries++
+		if tries > maxRetries {
+			return errors.New("maximum retries have been reached")
+		}
+	}
 }

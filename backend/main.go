@@ -5,15 +5,22 @@ import (
 	"os"
 	"personal-inventory/backend/controllers"
 	"personal-inventory/backend/models"
+	"personal-inventory/backend/utils"
+	"time"
 
-	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
+	"github.com/joho/godotenv"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 )
 
 func main() {
-	r := gin.Default()
+
+	if err := godotenv.Load(); err != nil {
+		log.Fatal(err)
+	}
+
+	engine := gin.Default()
 
 	port := os.Getenv("PORT")
 	if port == "" {
@@ -22,29 +29,40 @@ func main() {
 
 	db := initDB()
 
-	userService := controllers.UserService{
-		DB: db,
+	inventoryService := controllers.InventoryService{
+		DB:          db,
+		ServicePort: port,
+		Engine:      engine,
 	}
 
-	r.Use(cors.New(cors.Config{
-		AllowOrigins: []string{"*"},
-		AllowMethods: []string{"POST", "PUT", "PATCH", "DELETE", "OPTIONS", "GET"},
-		AllowHeaders: []string{"Content-Type,access-control-allow-origin, access-control-allow-headers, Authorization,Access-Control-Allow-Origin"},
-	}))
-
-	r.POST("/auth/login", userService.Login)
-
-	r.Run(":" + port)
+	if err := inventoryService.Run(); err != nil {
+		log.Fatal(err)
+	}
 }
 
 func initDB() *gorm.DB {
-	db, err := gorm.Open(postgres.Open("host=localhost user=postgres password=postgres dbname=inventorydb port=5432 sslmode=disable TimeZone=Asia/Shanghai"), &gorm.Config{})
+
+	var db *gorm.DB
+	var err error
+
+	maxRetries := 5
+	err = utils.Retry(func() bool {
+		time.Sleep(1 * time.Second)
+
+		db, err = gorm.Open(postgres.Open("host=database user=postgres password=postgres dbname=inventorydb port=5432 sslmode=disable TimeZone=Asia/Shanghai"), &gorm.Config{})
+		if err != nil {
+			log.Println(err)
+			return true
+		}
+
+		return false
+	}, maxRetries)
+
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	err = db.AutoMigrate(models.User{})
-	if err != nil {
+	if err := db.AutoMigrate(models.User{}); err != nil {
 		log.Fatal(err)
 	}
 
