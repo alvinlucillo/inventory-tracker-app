@@ -43,7 +43,7 @@ func (s InventoryService) Register(c *gin.Context) {
 	}
 
 	userRepo := repo.UserRepo{}
-	user, err := userRepo.FindByUsername(s.DB, userDto.Username)
+	_, err := userRepo.FindByUsername(s.DB, userDto.Username)
 	if err != nil {
 		// Non-existing username means it can be registered
 		if !errors.Is(err.Error, gorm.ErrRecordNotFound) {
@@ -55,14 +55,17 @@ func (s InventoryService) Register(c *gin.Context) {
 		return
 	}
 
-	token, jwtErr := utils.GenerateJWT(user.Username)
-	if err != nil {
-		fmt.Println(err)
-		c.JSON(http.StatusInternalServerError, jwtErr.Error())
+	newUser := &models.User{
+		Username: userDto.Username,
+		Password: userDto.Password,
+	}
+
+	if err := userRepo.Create(s.DB, newUser); err != nil {
+		c.JSON(http.StatusInternalServerError, "DB error has occurred. Check DB logs.")
 		return
 	}
 
-	c.JSON(http.StatusOK, token)
+	c.Status(http.StatusOK)
 }
 
 func (s InventoryService) Login(c *gin.Context) {

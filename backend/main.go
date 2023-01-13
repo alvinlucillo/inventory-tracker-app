@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"log"
 	"os"
 	"personal-inventory/backend/controllers"
@@ -49,7 +50,10 @@ func initDB() *gorm.DB {
 	err = utils.Retry(func() bool {
 		time.Sleep(1 * time.Second)
 
-		db, err = gorm.Open(postgres.Open("host=database user=postgres password=postgres dbname=inventorydb port=5432 sslmode=disable TimeZone=Asia/Shanghai"), &gorm.Config{})
+		connectionString := fmt.Sprintf("host=%s user=%s password=%s dbname=%s port=5432 sslmode=disable TimeZone=Asia/Shanghai",
+			os.Getenv("DB_HOST"), os.Getenv("DB_USER"), os.Getenv("DB_PASSWORD"), os.Getenv("DB_DBNAME"))
+
+		db, err = gorm.Open(postgres.Open(connectionString), &gorm.Config{})
 		if err != nil {
 			log.Println(err)
 			return true

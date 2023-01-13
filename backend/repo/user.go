@@ -29,10 +29,10 @@ func (*UserRepo) FindByUsername(DB *gorm.DB, username string) (*models.User, *ut
 	return user, nil
 }
 
-func (*UserRepo) Create(DB *gorm.DB, user *models.User) (*models.User, *utils.DBError) {
+func (*UserRepo) Create(DB *gorm.DB, user *models.User) *utils.DBError {
 	if err := utils.HandleDBError(DB.Create(&user)); err != nil {
-		return nil, err
+		return err
 	}
 
-	return user, nil
+	return nil
 }
